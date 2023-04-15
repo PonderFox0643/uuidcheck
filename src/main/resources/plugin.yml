@@ -1,0 +1,4 @@
+name: uuidcheck
+version: '${project.version}'
+main: com.uuidcheck.Uuidcheck
+api-version: 1.17
