@@ -1,4 +1,12 @@
 # uuidcheck
+
+**是时候该宣布uuidcheck退役了，其实猫踢螺钉已经可以满足ygg的所有要求**
+
+**我承认做此插件的时候不认识 猫踢螺钉 （https://github.com/CaaMoe/MultiLogin）**
+
+**自此宣布uuidcheck正式退役**
+
+
 这是简单粗暴的解决uuid不同玩家名相同的情况
 解决符合以下条件的服务器：
 正版第三方认证共存
