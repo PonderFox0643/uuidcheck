@@ -13,6 +13,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,14 +27,17 @@ public class Uuidcheck extends JavaPlugin implements Listener {
             "uuid VARCHAR(36) PRIMARY KEY, " +
             "name VARCHAR(16), " +
             "first_login_ip VARCHAR(45), " +
-            "last_login_ip VARCHAR(45)" +
+            "last_login_ip VARCHAR(45), " +
+            "first_login_time VARCHAR(25), " +
+            "last_login_time VARCHAR(25)" +
             ")";
     private static final String SELECT_PLAYER_QUERY = "SELECT uuid, first_login_ip FROM players WHERE name = ?";
-    private static final String UPDATE_PLAYER_QUERY = "UPDATE players SET name = ?, last_login_ip = ? WHERE uuid = ?";
-    private static final String INSERT_PLAYER_QUERY = "INSERT INTO players (uuid, name, first_login_ip, last_login_ip) VALUES (?, ?, ?, ?)";
+    private static final String UPDATE_PLAYER_QUERY = "UPDATE players SET name = ?, last_login_ip = ?, last_login_time = ? WHERE uuid = ?";
+    private static final String INSERT_PLAYER_QUERY = "INSERT INTO players (uuid, name, first_login_ip, last_login_ip, first_login_time, last_login_time) VALUES (?, ?, ?, ?, ?, ?)";
 
     private HikariDataSource dataSource;
     private Logger logger;
+    private ZoneId zoneId;
 
     @Override
     public void onEnable() {
@@ -55,6 +61,10 @@ public class Uuidcheck extends JavaPlugin implements Listener {
         config.setUsername(username);
         config.setPassword(password);
         dataSource = new HikariDataSource(config);
+
+        // Get timezone from config
+        String timezone = getConfig().getString("timezone", "GMT+8");
+        zoneId = ZoneId.of(timezone);
 
         // Create database if not exists
         try (Connection connection = dataSource.getConnection();
@@ -95,6 +105,7 @@ public class Uuidcheck extends JavaPlugin implements Listener {
         String playerName = player.getName();
         String uuid = player.getUniqueId().toString();
         String ip = player.getAddress().getAddress().getHostAddress();
+        String loginTime = LocalDateTime.now(zoneId).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(SELECT_PLAYER_QUERY)) {
@@ -105,9 +116,10 @@ public class Uuidcheck extends JavaPlugin implements Listener {
                     String firstLoginIp = result.getString("first_login_ip");
                     if (dbUuid.equals(player.getUniqueId())) {
                         // Player is allowed to join
-                        try (PreparedStatement updateIpStatement = connection.prepareStatement("UPDATE players SET last_login_ip = ? WHERE uuid = ?")) {
+                        try (PreparedStatement updateIpStatement = connection.prepareStatement("UPDATE players SET last_login_ip = ?, last_login_time = ? WHERE uuid = ?")) {
                             updateIpStatement.setString(1, ip);
-                            updateIpStatement.setString(2, uuid);
+                            updateIpStatement.setString(2, loginTime);
+                            updateIpStatement.setString(3, uuid);
                             updateIpStatement.executeUpdate();
                         }
                         return;
@@ -124,7 +136,8 @@ public class Uuidcheck extends JavaPlugin implements Listener {
             try (PreparedStatement updateStatement = connection.prepareStatement(UPDATE_PLAYER_QUERY)) {
                 updateStatement.setString(1, playerName);
                 updateStatement.setString(2, ip);
-                updateStatement.setString(3, uuid);
+                updateStatement.setString(3, loginTime);
+                updateStatement.setString(4, uuid);
                 int updatedRows = updateStatement.executeUpdate();
                 if (updatedRows == 0) {
                     // Player does not exist in database, insert new row
@@ -133,6 +146,8 @@ public class Uuidcheck extends JavaPlugin implements Listener {
                         insertStatement.setString(2, playerName);
                         insertStatement.setString(3, ip);
                         insertStatement.setString(4, ip);
+                        insertStatement.setString(5, loginTime);
+                        insertStatement.setString(6, loginTime);
                         insertStatement.executeUpdate();
                     }
                 }

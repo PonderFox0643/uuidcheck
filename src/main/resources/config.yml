@@ -4,3 +4,4 @@ mysql:
   username: root
   password: password
   database: mydatabase
+timezone: GMT+8
